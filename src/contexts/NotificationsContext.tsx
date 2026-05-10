@@ -1,8 +1,17 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { notificationService, AppNotification } from '@/lib/services/notificationService';
+import {
+  notificationService,
+  AppNotification,
+} from '@/lib/services/notificationService';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface NotificationsContextValue {
@@ -14,9 +23,24 @@ interface NotificationsContextValue {
   refreshNotifications: () => Promise<void>;
 }
 
-const NotificationsContext = createContext<NotificationsContextValue | null>(null);
+const NotificationsContext =
+  createContext<NotificationsContextValue | null>(null);
 
-export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+function isIgnorableError(error: any): boolean {
+  const message = error?.message || '';
+
+  return (
+    error?.name === 'AbortError' ||
+    message.includes('Lock broken by another request') ||
+    message.includes('was released because another request stole it')
+  );
+}
+
+export function NotificationsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,12 +50,19 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       setNotifications([]);
       return;
     }
+
     setLoading(true);
+
     try {
       const data = await notificationService.getAll();
       setNotifications(data);
     } catch (err: any) {
-      console.error('refreshNotifications error:', err.message);
+      if (!isIgnorableError(err)) {
+        console.error(
+          'refreshNotifications error:',
+          err?.message || err
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -46,8 +77,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     if (!user) return;
 
     const supabase = createClient();
+
     const channel = supabase
-      .channel('notifications_realtime')
+      .channel(`notifications_${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -64,19 +96,33 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
               billId: payload.new.bill_id,
               title: payload.new.title,
               message: payload.new.message,
-              notificationType: payload.new.notification_type,
+              notificationType:
+                payload.new.notification_type,
               isRead: payload.new.is_read,
               createdAt: payload.new.created_at,
             };
-            setNotifications((prev) => [newNotif, ...prev]);
+
+            setNotifications((prev) => [
+              newNotif,
+              ...prev,
+            ]);
           } else if (payload.eventType === 'UPDATE') {
             setNotifications((prev) =>
               prev.map((n) =>
-                n.id === payload.new.id ? { ...n, isRead: payload.new.is_read } : n
+                n.id === payload.new.id
+                  ? {
+                      ...n,
+                      isRead: payload.new.is_read,
+                    }
+                  : n
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            setNotifications((prev) => prev.filter((n) => n.id !== payload.old.id));
+            setNotifications((prev) =>
+              prev.filter(
+                (n) => n.id !== payload.old.id
+              )
+            );
           }
         }
       )
@@ -88,18 +134,49 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   }, [user]);
 
   const markAsRead = useCallback(async (id: string) => {
-    await notificationService.markAsRead(id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    try {
+      await notificationService.markAsRead(id);
+
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id
+            ? { ...n, isRead: true }
+            : n
+        )
+      );
+    } catch (err: any) {
+      if (!isIgnorableError(err)) {
+        console.error(
+          'markAsRead error:',
+          err?.message || err
+        );
+      }
+    }
   }, []);
 
   const markAllAsRead = useCallback(async () => {
-    await notificationService.markAllAsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await notificationService.markAllAsRead();
+
+      setNotifications((prev) =>
+        prev.map((n) => ({
+          ...n,
+          isRead: true,
+        }))
+      );
+    } catch (err: any) {
+      if (!isIgnorableError(err)) {
+        console.error(
+          'markAllAsRead error:',
+          err?.message || err
+        );
+      }
+    }
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter(
+    (n) => !n.isRead
+  ).length;
 
   return (
     <NotificationsContext.Provider
@@ -119,6 +196,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
 export function useNotifications() {
   const ctx = useContext(NotificationsContext);
-  if (!ctx) throw new Error('useNotifications must be used within NotificationsProvider');
+
+  if (!ctx) {
+    throw new Error(
+      'useNotifications must be used within NotificationsProvider'
+    );
+  }
+
   return ctx;
 }

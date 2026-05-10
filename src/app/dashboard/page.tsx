@@ -221,99 +221,83 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Upcoming Renewals + Overdue Bills */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
-              {/* Upcoming Renewals — single instance */}
-              <div className="card p-5 sm:p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h2 className="text-base font-700 text-foreground">{t.upcomingBills}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.next14Days}</p>
-                  </div>
-                  <Calendar size={16} className="text-muted-foreground" />
-                </div>
-                {upcomingBills.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">{t.noRenewals}</p>
-                ) : (
-                  <div className="space-y-3">
-                    {upcomingBills.slice(0, 5).map((bill) => {
-                      const days = getDaysUntil(bill.dueDate);
-                      return (
-                        <div
-                          key={bill.id}
-                          className={`flex items-center justify-between p-3 rounded-lg ${days <= 3 ? 'bg-amber-50 border border-amber-200' : 'bg-muted/30'}`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-700 flex-shrink-0"
-                              style={{ backgroundColor: CATEGORY_COLORS[bill.category] || '#6B7280' }}
-                            >
-                              {bill.title.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-600 text-foreground flex items-center gap-1.5 truncate">
-                                {bill.title}
-                                {days <= 3 && <AlertCircle size={12} className="text-amber-500 flex-shrink-0" />}
-                              </p>
-                              <p className="text-xs text-muted-foreground">{formatDate(bill.dueDate)}</p>
-                            </div>
-                          </div>
-                          <div className="text-right flex-shrink-0 ml-2">
-                            <p className="text-sm font-700 text-foreground tabular-nums">{format(bill.amount)}</p>
-                            <span className={`text-xs font-600 px-2 py-0.5 rounded-full ${days <= 3 ? 'bg-red-50 text-red-600' : days <= 7 ? 'bg-amber-50 text-amber-600' : 'bg-muted text-muted-foreground'}`}>
-                              {days}d
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+{/* Upcoming Renewals - Full Width */}
+<div className="card p-5 sm:p-6">
+  <div className="flex items-center justify-between mb-5">
+    <div>
+      <h2 className="text-base font-700 text-foreground">{t.upcomingBills}</h2>
+      <p className="text-xs text-muted-foreground mt-0.5">{t.next14Days}</p>
+    </div>
+    <Calendar size={16} className="text-muted-foreground" />
+  </div>
+
+  {upcomingBills.length === 0 ? (
+    <p className="text-sm text-muted-foreground text-center py-8">
+      {t.noRenewals}
+    </p>
+  ) : (
+    <div className="space-y-3">
+      {upcomingBills.slice(0, 5).map((bill) => {
+        const days = getDaysUntil(bill.dueDate);
+
+        return (
+          <div
+            key={bill.id}
+            className={`flex items-center justify-between p-3 rounded-lg ${
+              days <= 3
+                ? 'bg-amber-50 border border-amber-200'
+                : 'bg-muted/30'
+            }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-700 flex-shrink-0"
+                style={{
+                  backgroundColor:
+                    CATEGORY_COLORS[bill.category] || '#6B7280',
+                }}
+              >
+                {bill.title.charAt(0).toUpperCase()}
               </div>
 
-              {/* Overdue Bills */}
-              <div className="card p-5 sm:p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h2 className="text-base font-700 text-foreground">{t.overdueBills}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Requires immediate attention</p>
-                  </div>
-                  <AlertTriangle size={16} className="text-red-500" />
-                </div>
-                {overdueBills.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle size={24} className="text-emerald-500 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No overdue subscriptions!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {overdueBills.slice(0, 5).map((bill) => {
-                      const days = Math.abs(getDaysUntil(bill.dueDate));
-                      return (
-                        <div key={bill.id} className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-200">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-700 flex-shrink-0"
-                              style={{ backgroundColor: CATEGORY_COLORS[bill.category] || '#6B7280' }}
-                            >
-                              {bill.title.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-600 text-foreground truncate">{bill.title}</p>
-                              <p className="text-xs text-red-600 font-500">{days}d overdue</p>
-                            </div>
-                          </div>
-                          <div className="text-right flex-shrink-0 ml-2">
-                            <p className="text-sm font-700 text-red-700 tabular-nums">{format(bill.amount)}</p>
-                            <Link href="/bills" className="text-xs text-primary hover:underline">{t.editBill}</Link>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+              <div className="min-w-0">
+                <p className="text-sm font-600 text-foreground flex items-center gap-1.5 truncate">
+                  {bill.title}
+                  {days <= 3 && (
+                    <AlertCircle
+                      size={12}
+                      className="text-amber-500 flex-shrink-0"
+                    />
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(bill.dueDate)}
+                </p>
               </div>
             </div>
+
+            <div className="text-right flex-shrink-0 ml-2">
+              <p className="text-sm font-700 text-foreground tabular-nums">
+                {format(bill.amount)}
+              </p>
+              <span
+                className={`text-xs font-600 px-2 py-0.5 rounded-full ${
+                  days <= 3
+                    ? 'bg-red-50 text-red-600'
+                    : days <= 7
+                    ? 'bg-amber-50 text-amber-600'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {days}d
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</div>
 
             {/* Recent Bills */}
             <div className="card overflow-hidden">
